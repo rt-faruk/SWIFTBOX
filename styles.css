@@ -3,3 +3,5 @@
 .rider-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px;padding:16px;background:#fafafa;border:1px solid #eceef1;border-radius:14px;margin:10px 0 20px}.rider-form label{margin:5px 0 12px}.rider-form .form-actions{grid-column:1/-1;display:flex;gap:10px}.rider-form .form-actions .primary{width:auto}.rider-form .hint,.rider-form .error{grid-column:1/-1;margin:10px 0 0}.optional{font-weight:400;color:#858993}.row-actions{white-space:nowrap}.small-btn{padding:7px 9px;margin:2px;font-size:11px;background:#eef0f3}.danger-btn{color:#b42332;background:#ffebed}@media(max-width:760px){.rider-form{grid-template-columns:1fr}}
 
 .late{display:inline-block;padding:3px 10px;border-radius:999px;background:#fff1e0;color:#b45309;font-weight:700;font-size:.85rem}
+.ontime{display:inline-block;padding:3px 10px;border-radius:999px;background:#e6f6ec;color:#15803d;font-weight:700;font-size:.85rem}
+.absent{display:inline-block;padding:3px 10px;border-radius:999px;background:#fde8ea;color:#d4142f;font-weight:700;font-size:.85rem}
