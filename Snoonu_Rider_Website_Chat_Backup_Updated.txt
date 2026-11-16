@@ -1,0 +1,64 @@
+Snoonu Rider Duty Tracking Website — Chat Backup (Updated)
+Conversation scope: Project planning and initial Supabase setup
+Language: Bangla / Banglish
+
+USER: hi
+ASSISTANT: Hi! How can I help you today?
+
+USER: ami cacci amader snoonu rider der jonno ekta website banate karon snoonu er alada dashbord nai ke duty te gelo na gelo oita , ami cacchi ekhon oder ekta data base er jonno website korte ora duty te jawar smy sudu ekta buttom thakbe oita te click korle oy rider koytay koi tharike duty te gelo oitar ekta alada sheet e daily er ta daily entry hobe ekhob kibabe ki korte hobe
+ASSISTANT: Proposed Snoonu Riders Duty Tracking & Attendance Management Website with Rider Panel and Admin Dashboard. Rider clicks one button to record duty start, time, GPS location, and attendance. Admin can review daily attendance.
+
+USER: bangla te bolo
+ASSISTANT: Explained the system in Bangla.
+
+USER: ji kibabe ki hobe?
+ASSISTANT: Rider Panel: login, START DUTY button, duty date/time, attendance history. Admin Panel: rider count, present/absent, duty start time/location, daily report, Excel export. Daily data is organized by date.
+
+USER: 50 jon er bitore e ache
+ASSISTANT: System planned for around 50 riders.
+
+USER: SUDU START DUTY DILEY HOBE
+ASSISTANT: Confirmed START DUTY only, no END DUTY. Avoid duplicate check-ins daily.
+
+USER: - হ্যাঁ, সময় + লোকেশন দুটোই চাই।
+ASSISTANT: Confirmed automatic Qatar time and GPS location capture; browser location permission is needed. Admin gets daily attendance reports and map links. Absent reports need a duty schedule definition.
+
+USER: OIGULA TO ACCOUNT KORAR PORE ADD HOBE
+ASSISTANT: Rider accounts/data will be added later via Admin Panel. Features include admin login, add/edit/delete rider, rider login, START DUTY, Qatar time, GPS, daily reports, Excel export.
+
+USER: DATABASE ER JONNO KONTA USE KORBO FIREBASE NAKI SUPERBASE
+ASSISTANT: Recommended Supabase (PostgreSQL) for date-wise attendance reporting, rider search and management. Proposed tables: riders and attendance; use Supabase Authentication and RLS, never store passwords in plaintext.
+
+USER: OK
+ASSISTANT: Start with Supabase database setup.
+
+USER: ACCOUNT ACHE R HOSTING ER JONNO KI USE KORBO?
+ASSISTANT: Recommended Vercel hosting, with Supabase backend. Free tiers can be used subject to plan usage limits/terms.
+
+USER: EI CHAT TAR BACKUP ZIP FILE DAW
+ASSISTANTANT: Created initial ZIP chat transcript.
+
+USER: ACCAH ABAR AGE THEKE CONTINIUE KORO AR AMI FULL FREE TE KORTE CACCI
+ASSISTANT: Continued the project and planned a free-tier stack: Supabase free database/auth, Vercel Hobby hosting, HTML/CSS/JavaScript, browser GPS and Google Maps links without paid Maps API. Caveat: free tier usage limits and provider terms apply.
+
+ASSISTANT: Step 1 Supabase Database Setup instructions and SQL were provided. SQL creates:
+- public.riders table with id, auth_user_id reference to auth.users, rider_id, full_name, is_active, created_at.
+- public.attendance table with rider_id, duty_date, checkin_time, latitude, longitude, unique rider/date constraint.
+- RLS enabled and policies for rider profile view, admin rider management, rider attendance view, and rider start duty insert.
+User was asked to run SQL and report DONE.
+
+USER: korchi
+ASSISTANT: Step 2 Admin Login System explained. Instructions: create Admin user in Supabase Authentication > Users > Add User. Then run SQL to set admin role in auth.users raw_app_meta_data:
+UPDATE auth.users
+SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+WHERE email = 'YOUR_EMAIL';
+Then add policy:
+CREATE POLICY "Admin view all attendance"
+ON public.attendance
+FOR SELECT
+TO authenticated
+USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+User was told to logout/login so role refreshes and report DONE.
+
+USER: backup zip file daw chat er
+ASSISTANT: Updated chat backup ZIP requested.

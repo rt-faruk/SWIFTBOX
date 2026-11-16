@@ -1,0 +1,42 @@
+SNOONU RIDER DUTY PORTAL — FULL CHAT BACKUP
+Date: 2026-11-16
+Language: Bangla / Banglish
+
+USER: ei chat er zip daw full and kaj suru korbe
+ASSISTANT: Package the recovered project chat and source files, then continue development.
+
+USER: Supabase credentials supplied:
+Project URL: https://yoaxnzqnbaswgbeiqtha.supabase.co/rest/v1/
+Publishable key supplied and configured in app.js.
+A Supabase secret key was also pasted. It is intentionally excluded from this backup. Rotate it in Supabase because it was exposed.
+
+ASSISTANT: Confirmed project URL and publishable key. Warned to rotate the exposed secret key; never put it in frontend code.
+
+ASSISTANT: Initial frontend ZIP previously generated with index.html, styles.css, app.js, README.md. Not live-tested.
+
+USER: backup file ta daw chat er
+ASSISTANT: Supplied the original recovered chat backup ZIP link.
+
+USER: accah baki kaj koro
+USER: ei chat er zip daw full and kaj suru korbe
+
+RECOVERED PROJECT REQUIREMENTS:
+- Website for around 50 Snoonu riders.
+- Rider login, one START DUTY button per Qatar calendar day.
+- Capture time and GPS location automatically.
+- Admin adds rider data/accounts later.
+- Admin daily attendance report, present/absent, time, map link, CSV export.
+- Supabase database/auth; Vercel hosting; free tier preferred.
+- No END DUTY feature requested.
+
+CURRENT DEVELOPMENT STATUS:
+- Initial frontend files: index.html, styles.css, app.js.
+- Supabase project URL and publishable key configured in app.js.
+- Admin role check uses app_metadata.role === 'admin'.
+- Rider check-in inserts rider_id, Qatar date, UTC timestamp, latitude, longitude.
+- Admin daily report and CSV export exist.
+- Rider management UI not implemented.
+- Live API connection/schema/RLS not verified.
+
+NEXT TASK:
+Finish Admin Rider Management, then test with Admin and Rider accounts. Do not request or store the Supabase secret key.
