@@ -33,14 +33,11 @@ async function routeUser(){
 function showError(message){$('riderView').hidden=false;$('riderStatus').textContent=message;$('riderStatus').className='error'}
 async function refreshDutyButton(){const {data,error}=await supabase.from('attendance').select('id').eq('rider_id',currentRider.id).eq('duty_date',qatarDate()).maybeSingle();if(error){$('riderStatus').textContent=error.message;return}if(data){$('startDutyBtn').disabled=true;$('startDutyBtn').textContent='DUTY ALREADY STARTED';$('riderStatus').textContent='Your attendance has already been recorded for today.'}else{$('startDutyBtn').disabled=false;$('startDutyBtn').textContent='START DUTY'}}
 $('startDutyBtn').addEventListener('click',async()=>{
-  const btn=$('startDutyBtn');btn.disabled=true;$('riderStatus').textContent='Getting your GPS location…';
-  if(!navigator.geolocation){$('riderStatus').textContent='GPS is not supported by this browser.';btn.disabled=false;return}
-  navigator.geolocation.getCurrentPosition(async pos=>{
-    const payload={rider_id:currentRider.id,duty_date:qatarDate(),checkin_time:new Date().toISOString(),latitude:pos.coords.latitude,longitude:pos.coords.longitude};
-    const {error}=await supabase.from('attendance').insert(payload);
-    if(error){$('riderStatus').textContent=error.code==='23505'?'You have already started duty today.':error.message;btn.disabled=false;return}
-    $('riderStatus').textContent='Duty started successfully. Your time and location have been saved.';await loadRiderHistory();await refreshDutyButton();
-  },err=>{$('riderStatus').textContent='Location permission required: '+err.message;btn.disabled=false},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+  const btn=$('startDutyBtn');btn.disabled=true;$('riderStatus').textContent='Saving your attendance…';
+  const payload={rider_id:currentRider.id,duty_date:qatarDate(),checkin_time:new Date().toISOString()};
+  const {error}=await supabase.from('attendance').insert(payload);
+  if(error){$('riderStatus').textContent=error.code==='23505'?'You have already started duty today.':error.message;btn.disabled=false;return}
+  $('riderStatus').textContent='Duty started successfully. Your time has been saved.';await loadRiderHistory();await refreshDutyButton();
 });
 async function loadRiderHistory(){const {data,error}=await supabase.from('attendance').select('duty_date,checkin_time,latitude,longitude').eq('rider_id',currentRider.id).order('duty_date',{ascending:false}).limit(10);if(error){$('riderHistory').textContent=error.message;return}const rows=data||[];$('riderHistory').innerHTML='<h3>Recent check-ins</h3>'+ (rows.length?'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Time</th><th>Location</th></tr></thead><tbody>'+rows.map(r=>`<tr><td>${escapeHtml(r.duty_date)}</td><td>${qatarTime(r.checkin_time)}</td><td>${r.latitude!=null&&r.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.latitude},${r.longitude}">View map</a>`:'Not available'}</td></tr>`).join('')+'</tbody></table></div>':'<p class="muted-text">No check-ins yet.</p>')}
 $('reportDate').value=qatarDate();$('reportDate').addEventListener('change',loadAttendance);$('refreshBtn').addEventListener('click',loadAdmin);$('exportBtn').addEventListener('click',exportCsv);
