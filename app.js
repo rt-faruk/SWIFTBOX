@@ -21,7 +21,7 @@ async function init(){
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='Signing in…';const {data,error}=await supabase.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){$('loginError').textContent=error.message;return}currentUser=data.user;await routeUser()});
 $('logoutBtn').addEventListener('click',async()=>{await supabase.auth.signOut();currentUser=null;currentRider=null;showLogin()});
 async function routeUser(){
-  showApp();$('riderView').hidden=true;$('adminView').hidden=true;
+  showApp();$('riderView').hidden=true;$('adminView').hidden=true;$('startDutyBtn').hidden=false;$('riderStatus').className='status';$('riderStatus').textContent='';
   const role=currentUser.app_metadata?.role;
   if(role==='admin'){$('roleLabel').textContent='ADMINISTRATOR';$('welcomeName').textContent='Admin Dashboard';$('adminView').hidden=false;await loadAdmin();return}
   const {data,error}=await supabase.from('riders').select('id,rider_id,full_name,is_active,auth_user_id').eq('auth_user_id',currentUser.id).maybeSingle();
@@ -30,14 +30,25 @@ async function routeUser(){
   if(!data.is_active){showError('This rider account is inactive. Contact administrator.');return}
   currentRider=data;$('roleLabel').textContent='RIDER PORTAL';$('welcomeName').textContent=`Hello, ${data.full_name}`;$('riderView').hidden=false;await loadRiderHistory();await refreshDutyButton();
 }
-function showError(message){$('riderView').hidden=false;$('riderStatus').textContent=message;$('riderStatus').className='error'}
+function showError(message){$('riderView').hidden=false;$('startDutyBtn').hidden=true;$('riderStatus').textContent=message;$('riderStatus').className='error'}
 async function refreshDutyButton(){const {data,error}=await supabase.from('attendance').select('id').eq('rider_id',currentRider.id).eq('duty_date',qatarDate()).maybeSingle();if(error){$('riderStatus').textContent=error.message;return}if(data){$('startDutyBtn').disabled=true;$('startDutyBtn').textContent='DUTY ALREADY STARTED';$('riderStatus').textContent='Your attendance has already been recorded for today.'}else{$('startDutyBtn').disabled=false;$('startDutyBtn').textContent='START DUTY'}}
 $('startDutyBtn').addEventListener('click',async()=>{
-  const btn=$('startDutyBtn');btn.disabled=true;$('riderStatus').textContent='Saving your attendance…';
-  const payload={rider_id:currentRider.id,duty_date:qatarDate(),checkin_time:new Date().toISOString()};
-  const {error}=await supabase.from('attendance').insert(payload);
-  if(error){$('riderStatus').textContent=error.code==='23505'?'You have already started duty today.':error.message;btn.disabled=false;return}
-  $('riderStatus').textContent='Duty started successfully. Your time has been saved.';await loadRiderHistory();await refreshDutyButton();
+  const btn=$('startDutyBtn'),st=$('riderStatus');
+  if(!currentRider){st.className='error';st.textContent='This login is not linked to a rider record. Contact the administrator.';return}
+  btn.disabled=true;st.className='status';st.textContent='Saving your attendance…';
+  try{
+    const payload={rider_id:currentRider.id,duty_date:qatarDate(),checkin_time:new Date().toISOString()};
+    const {error}=await supabase.from('attendance').insert(payload);
+    if(error){
+      st.className='error';
+      st.textContent=error.code==='23505'?'You have already started duty today.':(error.code==='42501'?'Permission denied (RLS). Ask the administrator to check database policies.':'Error: '+error.message);
+      btn.disabled=false;return
+    }
+    st.textContent='Duty started successfully. Your time has been saved.';
+    await loadRiderHistory();await refreshDutyButton();
+  }catch(err){
+    st.className='error';st.textContent='Unexpected error: '+(err&&err.message?err.message:err);btn.disabled=false
+  }
 });
 async function loadRiderHistory(){const {data,error}=await supabase.from('attendance').select('duty_date,checkin_time,latitude,longitude').eq('rider_id',currentRider.id).order('duty_date',{ascending:false}).limit(10);if(error){$('riderHistory').textContent=error.message;return}const rows=data||[];$('riderHistory').innerHTML='<h3>Recent check-ins</h3>'+ (rows.length?'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Time</th><th>Location</th></tr></thead><tbody>'+rows.map(r=>`<tr><td>${escapeHtml(r.duty_date)}</td><td>${qatarTime(r.checkin_time)}</td><td>${r.latitude!=null&&r.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.latitude},${r.longitude}">View map</a>`:'Not available'}</td></tr>`).join('')+'</tbody></table></div>':'<p class="muted-text">No check-ins yet.</p>')}
 $('reportDate').value=qatarDate();$('reportDate').addEventListener('change',loadAttendance);$('refreshBtn').addEventListener('click',loadAdmin);$('exportBtn').addEventListener('click',exportCsv);
