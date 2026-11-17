@@ -84,6 +84,62 @@ async function loadAttendance(){const date=$('reportDate').value||qatarDate();co
   $('loginRows').innerHTML=logins.map((a,i)=>{const r=rmap.get(a.rider_id)||{};return `<tr><td>${i+1}</td><td>${escapeHtml(r.rider_id||'—')}</td><td>${escapeHtml(r.full_name||'—')}</td><td>${qatarTime(a.checkin_time)}</td><td>${timingHtml(a,r.shift_start)}</td></tr>`}).join('')||'<tr><td colspan="5">No logins yet for this date.</td></tr>';
   const byId=new Map(lastRows.map(a=>[a.rider_id,a]));$('attendanceRows').innerHTML=(riders||[]).filter(r=>r.is_active).map(r=>{const a=byId.get(r.id);return `<tr><td>${escapeHtml(r.rider_id)}</td><td>${escapeHtml(r.full_name)}</td><td>${r.shift_start?hm(r.shift_start):'—'}</td><td>${a?qatarTime(a.checkin_time):'—'}</td><td>${timingHtml(a,r.shift_start)}</td><td>${a&&a.latitude!=null&&a.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${a.latitude},${a.longitude}">View location</a>`:'—'}</td><td>${a?'<span class="status">Present</span>':'<span class="absent">Absent</span>'}</td></tr>`}).join('')||'<tr><td colspan="7">No riders found.</td></tr>';}
 async function exportCsv(){const date=$('reportDate').value||qatarDate();const {data:riders,error}=await supabase.from('riders').select('id,rider_id,full_name,is_active,shift_start').order('full_name');if(error){alert(error.message);return}const byId=new Map(lastRows.map(a=>[a.rider_id,a]));const lines=[['Rider ID','Rider Name','Shift start','Date','Login time Qatar','Late / On time','Latitude','Longitude','Map URL','Status']];(riders||[]).filter(r=>r.is_active).forEach(r=>{const a=byId.get(r.id);lines.push([r.rider_id,r.full_name,hm(r.shift_start),date,a?qatarTime(a.checkin_time):'',timing(a,r.shift_start).label,a?.latitude??'',a?.longitude??'',a&&a.latitude!=null&&a.longitude!=null?`https://www.google.com/maps?q=${a.latitude},${a.longitude}`:'',a?'Present':'Absent'])});const csv=lines.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`snoonu-attendance-${date}.csv`;link.click();URL.revokeObjectURL(url)}
+// ---- Date range Excel export: one sheet per day ----
+const MAX_RANGE_DAYS = 31; // maximum days allowed in one download
+function dayList(from,to){
+  const out=[],end=new Date(to+'T00:00:00Z');
+  for(let d=new Date(from+'T00:00:00Z');d<=end;d.setUTCDate(d.getUTCDate()+1)) out.push(d.toISOString().slice(0,10));
+  return out;
+}
+async function fetchAttendanceRange(from,to){
+  const PAGE=1000; let all=[],start=0; // Supabase returns max 1000 rows per request, so page through
+  while(true){
+    const {data,error}=await supabase.from('attendance').select('rider_id,duty_date,checkin_time,latitude,longitude').gte('duty_date',from).lte('duty_date',to).order('duty_date').order('rider_id').range(start,start+PAGE-1);
+    if(error) throw error;
+    all=all.concat(data||[]);
+    if(!data||data.length<PAGE) break;
+    start+=PAGE;
+  }
+  return all;
+}
+async function exportRangeXlsx(){
+  const from=$('rangeFrom').value,to=$('rangeTo').value,msg=$('rangeMsg'),btn=$('exportXlsxBtn');
+  const fail=t=>{msg.textContent=t;msg.className='error'};
+  if(!from||!to){fail('Please select both From and To dates.');return}
+  if(from>to){fail('From date must be on or before To date.');return}
+  const days=dayList(from,to);
+  if(days.length>MAX_RANGE_DAYS){fail(`Please select at most ${MAX_RANGE_DAYS} days at a time.`);return}
+  if(!window.XLSX){fail('Excel library failed to load. Check your internet connection and reload the page.');return}
+  btn.disabled=true;msg.className='hint';msg.textContent='Preparing Excel file…';
+  try{
+    const {data:riders,error:re}=await supabase.from('riders').select('id,rider_id,full_name,is_active,shift_start').order('full_name');
+    if(re) throw re;
+    const att=await fetchAttendanceRange(from,to);
+    const byDay=new Map(days.map(d=>[d,new Map()]));
+    att.forEach(a=>{const m=byDay.get(a.duty_date);if(m) m.set(a.rider_id,a)});
+    const header=['Rider ID','Rider Name','Shift start','Date','Login time Qatar','Late / On time','Latitude','Longitude','Map URL','Status'];
+    const wb=XLSX.utils.book_new();
+    days.forEach(day=>{
+      const dayAtt=byDay.get(day);
+      const rows=[header];
+      // active riders (present/absent) + any inactive rider who still has a check-in that day
+      (riders||[]).filter(r=>r.is_active||dayAtt.has(r.id)).forEach(r=>{
+        const a=dayAtt.get(r.id);
+        rows.push([r.rider_id,r.full_name,hm(r.shift_start),day,a?qatarTime(a.checkin_time):'',timing(a,r.shift_start).label,a?.latitude??'',a?.longitude??'',a&&a.latitude!=null&&a.longitude!=null?`https://www.google.com/maps?q=${a.latitude},${a.longitude}`:'',a?'Present':'Absent']);
+      });
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=[{wch:12},{wch:26},{wch:11},{wch:12},{wch:22},{wch:16},{wch:12},{wch:12},{wch:44},{wch:10}];
+      XLSX.utils.book_append_sheet(wb,ws,day); // sheet name = date (YYYY-MM-DD)
+    });
+    XLSX.writeFile(wb,`snoonu-attendance-${from}_to_${to}.xlsx`);
+    msg.className='hint';msg.textContent=`Downloaded ${days.length} day(s) · ${att.length} check-in(s).`;
+  }catch(err){
+    fail('Export failed: '+(err&&err.message?err.message:err));
+  }finally{
+    btn.disabled=false;
+  }
+}
+$('rangeFrom').value=qatarDate();$('rangeTo').value=qatarDate();$('exportXlsxBtn').addEventListener('click',exportRangeXlsx);
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 supabase.auth.onAuthStateChange((_event,session)=>{if(!session){currentUser=null;currentRider=null;showLogin()}});
 init();
